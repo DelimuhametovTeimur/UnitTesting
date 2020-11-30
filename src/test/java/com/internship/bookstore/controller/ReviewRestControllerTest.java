@@ -1,7 +1,6 @@
 package com.internship.bookstore.controller;
 
 import com.internship.bookstore.api.controller.ReviewRestController;
-import com.internship.bookstore.api.dto.ReviewDto;
 import com.internship.bookstore.service.ReviewService;
 import com.internship.bookstore.service.UserService;
 import org.junit.jupiter.api.Test;
@@ -20,7 +19,6 @@ import static com.internship.TestConstants.*;
 import static com.internship.bookstore.utils.ReviewTestUtils.*;
 
 import static com.internship.it.controller.BaseController.createExpectedBody;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -43,39 +41,24 @@ public class ReviewRestControllerTest {
     @Test
     @WithMockUser
     public void shouldReturnReviews() throws Exception {
-
-        when(reviewService.getReviews()).thenReturn(Collections.singletonList(REVIEW_DTO_ONE));
-
+        when(reviewService.getAllReviews()).thenReturn(Collections.singletonList(REVIEW_RESPONSE_DTO_ONE));
         mockMvc.perform(get("/review/getAll"))
                 .andDo(print())
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-
-        verify(reviewService).getReviews();
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().json(createExpectedBody(Collections.singletonList(REVIEW_RESPONSE_DTO_ONE))));
+        verify(reviewService).getAllReviews();
     }
 
     @Test
     @WithMockUser
     public void shouldReturnReview() throws Exception {
-
-        when(reviewService.getReview(any(Long.class))).thenReturn(REVIEW_DTO_ONE);
-
-        mockMvc.perform(get("/review/get/{id}", ID_ONE))
+        when(reviewService.getReview(ID_ONE)).thenReturn(REVIEW_RESPONSE_DTO_ONE);
+        mockMvc.perform(get("/review/get/" + ID_ONE))
                 .andDo(print())
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-
-        verify(reviewService).getReview(any(Long.class));
-    }
-
-    @Test
-    @WithMockUser
-    public void shouldNotReturnReview() throws Exception {
-
-        when(reviewService.getReview(any(Long.class))).thenReturn(REVIEW_DTO_ONE);
-
-        mockMvc.perform(get("/review/get/{id}", ID_NEGATIVE))
-                .andDo(print())
-                .andExpect(status().isBadRequest());
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().json(createExpectedBody(REVIEW_RESPONSE_DTO_ONE)));
+        verify(reviewService).getReview(ID_ONE);
     }
 }

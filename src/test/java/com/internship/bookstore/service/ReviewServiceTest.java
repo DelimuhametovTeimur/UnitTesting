@@ -1,11 +1,12 @@
 package com.internship.bookstore.service;
 
-import com.internship.bookstore.api.dto.ReviewDto;
-import com.internship.bookstore.model.Review;
+import com.internship.bookstore.api.dto.ReviewRequestDto;
+import com.internship.bookstore.api.dto.ReviewResponseDto;
 import com.internship.bookstore.repository.BookRepository;
 import com.internship.bookstore.repository.ReviewRepository;
 import com.internship.bookstore.repository.UserRepository;
 import com.internship.bookstore.utils.exceptions.RecordNotFoundException;
+import com.internship.bookstore.utils.exceptions.ReviewNotValidException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,9 +19,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.*;
 
 import static com.internship.TestConstants.ID_ONE;
-import static com.internship.TestConstants.ID_TWO;
 import static com.internship.bookstore.utils.BookTestUtils.BOOK_ONE;
-import static com.internship.bookstore.utils.BookTestUtils.BOOK_TWO;
 import static com.internship.bookstore.utils.ReviewTestUtils.*;
 import static com.internship.bookstore.utils.UserTestUtils.USER_ONE;
 import static org.junit.jupiter.api.Assertions.*;
@@ -46,7 +45,6 @@ public class ReviewServiceTest {
 
     @BeforeEach
     void setUp() {
-
         ReflectionTestUtils.setField(reviewService, "messageUserNotFound",
                 "User with id %s was not found");
         ReflectionTestUtils.setField(reviewService, "messageBookNotFound",
@@ -57,88 +55,78 @@ public class ReviewServiceTest {
 
     @AfterEach
     void tearDown(){
-
-        verifyNoMoreInteractions(bookRepository, reviewRepository);
-        verifyNoMoreInteractions(userRepository, reviewRepository);
+        verifyNoMoreInteractions(bookRepository, reviewRepository, userRepository);
     }
 
     @Test
     public void shouldReturnReviews() {
-
         when(reviewRepository.findAll()).thenReturn(Arrays.asList(REVIEW_ONE, REVIEW_TWO));
-
-        final List<Review> reviews = reviewRepository.findAll();
-
-        assertTrue(reviews.contains(REVIEW_ONE));
-        assertTrue(reviews.contains(REVIEW_TWO));
+        final List<ReviewResponseDto> reviewResponseDtos = reviewService.getAllReviews();
+        assertTrue(reviewResponseDtos.contains(REVIEW_RESPONSE_DTO_ONE));
+        assertTrue(reviewResponseDtos.contains(REVIEW_RESPONSE_DTO_TWO));
+        verify(reviewRepository).findAll();
     }
 
     @Test
     public void shouldNotReturnReviews() {
-
-        when(reviewRepository.findAll()).thenReturn(Arrays.asList(REVIEW_ONE));
-
-        final List<Review> reviews = reviewRepository.findAll();
-
-        assertFalse(reviews.contains(REVIEW_TWO));
+        final List<ReviewResponseDto> reviewResponseDtos = reviewService.getAllReviews();
+        assertFalse(reviewResponseDtos.contains(REVIEW_RESPONSE_DTO_ONE));
+        assertFalse(reviewResponseDtos.contains(REVIEW_RESPONSE_DTO_TWO));
+        verify(reviewRepository).findAll();
     }
 
     @Test
     public void shouldReturnReview() {
-
         when(reviewRepository.findById(ID_ONE)).thenReturn(Optional.of(REVIEW_ONE));
-
-        final ReviewDto reviewDto = REVIEW_DTO_ONE;
-        final ReviewDto newReviewDto = reviewService.getReview(ID_ONE);
-
-        assertEquals(reviewDto, newReviewDto);
-
-        verify(reviewRepository, times(1)).findById(any(Long.class));
+        assertEquals(REVIEW_RESPONSE_DTO_ONE, reviewService.getReview(ID_ONE));
+        verify(reviewRepository).findById(any(Long.class));
     }
 
     @Test
     public void shouldNotReturnReview() {
-
         when(reviewRepository.findById(ID_ONE)).thenReturn(Optional.empty());
-
-        assertThrows(RecordNotFoundException.class, () -> {reviewService.getReview(ID_ONE);});
+        assertThrows(RecordNotFoundException.class, () -> reviewService.getReview(ID_ONE));
+        verify(reviewRepository).findById(ID_ONE);
     }
 
     @Test
-    public void shouldAddReview() {
-
-        final ReviewDto reviewDto = REVIEW_DTO_ONE;
-        assertEquals(reviewDto.getBookId(), BOOK_ONE.getId());
-        assertEquals(reviewDto.getUserId(), USER_ONE.getId());
-        textValidationService.validate(reviewDto);
-    }
-
-    @Test
-    public void shouldNotAddReviewNoUserFound() {
-
-        final ReviewDto reviewDto = REVIEW_DTO_ONE;
-        when(userRepository.findById(ID_ONE)).thenReturn(Optional.of(USER_ONE));
-        when(bookRepository.findById(ID_ONE)).thenReturn(Optional.empty());
-
-        assertThrows(RecordNotFoundException.class, () -> {reviewService.addReview(reviewDto);});
-    }
-
-    @Test
-    public void shouldNotAddReviewNoBookFound() {
-
-        final ReviewDto reviewDto = REVIEW_DTO_ONE;
-        when(userRepository.findById(ID_ONE)).thenReturn(Optional.empty());
-
-        assertThrows(RecordNotFoundException.class, () -> {reviewService.addReview(reviewDto);});
-    }
-
-    @Test
-    public void shouldNotAddReviewNoValidText() {
-
-        final ReviewDto reviewDto = REVIEW_DTO_TWO;
+    public void shouldSaveReview() {
+        final ReviewRequestDto reviewRequestDto = REVIEW_REQUEST_DTO_ONE;
         when(userRepository.findById(ID_ONE)).thenReturn(Optional.of(USER_ONE));
         when(bookRepository.findById(ID_ONE)).thenReturn(Optional.of(BOOK_ONE));
+        when(textValidationService.validate(reviewRequestDto)).thenReturn(true);
+        when(reviewRepository.save(REVIEW_ONE_NO_ID )).thenReturn(REVIEW_ONE);
+        assertEquals(REVIEW_RESPONSE_DTO_ONE, reviewService.save(reviewRequestDto));
+        verify(userRepository).findById(ID_ONE);
+        verify(bookRepository).findById(ID_ONE);
+        verify(textValidationService).validate(reviewRequestDto);
+    }
 
-        assertThrows(RecordNotFoundException.class, () -> {reviewService.addReview(reviewDto);});
+    @Test
+    public void shouldNotSaveReviewNoBookFound() {
+        final ReviewRequestDto reviewRequestDto = REVIEW_REQUEST_DTO_ONE;
+        when(userRepository.findById(ID_ONE)).thenReturn(Optional.of(USER_ONE));
+        assertThrows(RecordNotFoundException.class, () -> reviewService.save(reviewRequestDto));
+        verify(userRepository).findById(ID_ONE);
+        verify(bookRepository).findById(ID_ONE);
+    }
+
+    @Test
+    public void shouldNotSaveReviewNoUserFound() {
+        final ReviewRequestDto reviewRequestDto = REVIEW_REQUEST_DTO_ONE;
+        assertThrows(RecordNotFoundException.class, () -> reviewService.save(reviewRequestDto));
+        verify(userRepository).findById(ID_ONE);
+    }
+
+    @Test
+    public void shouldNotSaveReviewNoValidText() {
+        final ReviewRequestDto reviewRequestDto = REVIEW_REQUEST_DTO_ONE;
+        when(userRepository.findById(ID_ONE)).thenReturn(Optional.of(USER_ONE));
+        when(bookRepository.findById(ID_ONE)).thenReturn(Optional.of(BOOK_ONE));
+        when(textValidationService.validate(reviewRequestDto)).thenReturn(false);
+        assertThrows(ReviewNotValidException.class, () -> reviewService.save(reviewRequestDto));
+        verify(userRepository).findById(ID_ONE);
+        verify(bookRepository).findById(ID_ONE);
+        verify(textValidationService).validate(reviewRequestDto);
     }
 }

@@ -1,6 +1,6 @@
 package com.internship.bookstore.model;
 
-import com.internship.bookstore.api.dto.ReviewDto;
+import com.internship.bookstore.api.dto.ReviewResponseDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -42,10 +42,10 @@ public class Review {
     @Column(name = "text_review")
     private String textReview;
 
-    public Review(ReviewDto reviewDto, Book book, User user) {
-        this.id = reviewDto.getId();
+    public Review(ReviewResponseDto reviewResponseDto, Book book, User user) {
+        this.id = reviewResponseDto.getId();
         this.book = book;
         this.user = user;
-        this.textReview = reviewDto.getTextReview();
+        this.textReview = reviewResponseDto.getTextReview();
     }
 }

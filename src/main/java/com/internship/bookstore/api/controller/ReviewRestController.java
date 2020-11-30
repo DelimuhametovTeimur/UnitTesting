@@ -1,12 +1,19 @@
 package com.internship.bookstore.api.controller;
 
-import com.internship.bookstore.api.dto.ReviewDto;
+import com.internship.bookstore.api.dto.ReviewRequestDto;
+import com.internship.bookstore.api.dto.ReviewResponseDto;
+import com.internship.bookstore.api.exchange.Response;
 import com.internship.bookstore.service.ReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.Errors;
 import org.springframework.web.bind.annotation.*;
 
-import static org.springframework.http.HttpStatus.*;
+import javax.validation.Valid;
+import javax.validation.ValidationException;
+
+import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/review")
@@ -16,24 +23,21 @@ public class ReviewRestController {
     public final ReviewService reviewService;
 
     @GetMapping("/getAll")
-    public ResponseEntity<Object> getAllReviews() {
-        return new ResponseEntity<>(reviewService.getReviews(), OK);
+    public ResponseEntity<Response<List<ReviewResponseDto>>> getAllReviews() {
+        return ResponseEntity.ok(Response.build(reviewService.getAllReviews()));
     }
 
     @GetMapping("/get/{id}")
-    public ResponseEntity<Object> getReview(@PathVariable Long id) {
-        if(id >= 0)
-        {
-            return new ResponseEntity<>(reviewService.getReview(id), OK);
-        }
-        else {
-            return new ResponseEntity<>("Incorrect id value", BAD_REQUEST);
-        }
+    public ResponseEntity<Response<ReviewResponseDto>> getReview(@PathVariable Long id) {
+        return ResponseEntity.ok(Response.build(reviewService.getReview(id)));
     }
 
     @PostMapping("/add")
-    public ResponseEntity<Object> addReview(@RequestBody ReviewDto reviewDto) {
-        reviewService.addReview(reviewDto);
-        return new ResponseEntity<>("Review saved successfully", CREATED);
+    public ResponseEntity<Response<ReviewResponseDto>> addReview(
+            @RequestBody @Valid ReviewRequestDto reviewRequestDto, Errors validationErrors) {
+        if (validationErrors.hasErrors()) {
+            throw new ValidationException(Objects.requireNonNull(validationErrors.getFieldError()).getDefaultMessage());
+        }
+        return ResponseEntity.ok(Response.build(reviewService.save(reviewRequestDto)));
     }
 }
